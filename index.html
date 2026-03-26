@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>语录随读</title>
+  <style>
+    /* ================= 1. 基础重置 ================= */
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", STHeiti, "Microsoft Yahei", Tahoma, Simsun, sans-serif; background: #e8e2d8; }
+    button { -webkit-tap-highlight-color: transparent; outline: none; border: none; }
+    button:disabled { opacity: 0.65; cursor: not-allowed; }
+    
+    #toast-container { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.75); color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 15px; z-index: 9999; display: none; opacity: 0; transition: opacity 0.3s; pointer-events: none; text-align: center; }
+
+    /* ================= 2. 起始页 (书本封面) ================= */
+    #start-page { min-height: 100vh; background: #f7f3f0; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; }
+    .start-main { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px 0; box-sizing: border-box; }
+    
+    .book-wrap { position: relative; margin-bottom: 40px; }
+    .book-glow { position: absolute; left: 50%; top: 50%; width: 200px; height: 240px; transform: translate(-50%, -50%); background: radial-gradient(ellipse at center, rgba(178, 58, 43, 0.22) 0%, rgba(178, 58, 43, 0) 68%); pointer-events: none; }
+    .book-cover { position: relative; width: 145px; height: 205px; background: #b23a2b; border-radius: 4px 14px 14px 4px; border: 1px solid #8f2e22; box-shadow: inset 12px 0 20px rgba(0, 0, 0, 0.15), inset 2px 0 0 rgba(255, 255, 255, 0.25), inset -3px 0 10px rgba(0, 0, 0, 0.05), 8px 12px 24px rgba(120, 40, 30, 0.25); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .book-labels { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding-left: 12px; }
+    .book-char, .book-title { writing-mode: vertical-rl; text-orientation: upright; color: #ffffff; font-family: "Songti SC", "Noto Serif SC", SimSun, serif; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.15); }
+    .book-char { font-size: 28px; font-weight: 700; letter-spacing: 0.15em; }
+    .book-title { font-size: 22px; font-weight: 600; letter-spacing: 0.35em; }
+    
+    .btn-extract { width: 86%; max-width: 280px; height: 50px; padding: 0; background: #b23a2b; color: #ffffff; border-radius: 25px; margin: 0; cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .btn-extract:active { opacity: 0.92; }
+    .btn-extract-text { font-size: 16px; }
+    .footer-quote { flex-shrink: 0; text-align: center; font-size: 12px; color: #a8988c; font-style: italic; padding: 12px 20px calc(24px + env(safe-area-inset-bottom)); }
+
+    /* ================= 3. 抽签页 (阅读区) ================= */
+    #draw-page { display: none; min-height: 100vh; flex-direction: column; align-items: stretch; padding: 24px 18px 40px; box-sizing: border-box; }
+    .header { margin-bottom: 16px; }
+    .header-title { display: block; font-size: 20px; font-weight: 700; color: #2c1810; letter-spacing: 1.5px; }
+    .header-sub { display: block; margin-top: 5px; font-size: 13px; color: #7a6b5f; }
+    
+    .quote-card { background: #f2ede4; border-radius: 10px; border: 0.5px solid rgba(0, 0, 0, 0.08); padding: 24px 20px 18px; overflow: hidden; position: relative; margin-bottom: 22px; min-height: 160px; display: flex; flex-direction: column; justify-content: center;}
+    .placeholder-text { font-size: 15px; color: #9a8b7c; text-align: center; }
+    
+    #result-view { display: none; flex-direction: column; }
+    .category-wrap { margin-bottom: 14px; }
+    .category-inner { display: inline-flex; flex-direction: column; align-items: stretch; }
+    .category { font-size: 17px; font-weight: 700; color: #b22222; letter-spacing: 1px; }
+    .category-underline { height: 4px; width: 100%; background: #b22222; border-radius: 1px; margin-top: 4px; }
+    .quote-main { display: block; font-family: "Source Han Serif CN", "Noto Serif SC", "Songti SC", SimSun, serif; font-size: 17px; font-weight: 700; color: #000000; line-height: 1.85; letter-spacing: 0.5px; }
+    .card-divider { height: 0.5px; background: rgba(0, 0, 0, 0.1); margin: 18px 0 14px; }
+    .card-footer { display: flex; flex-direction: row; justify-content: flex-start; }
+    .footer-left { display: flex; flex-direction: column; align-items: flex-start; }
+    .source { font-size: 12px; color: #5c4f42; line-height: 1.5; }
+    .star { margin-top: 8px; font-size: 14px; color: #b22222; line-height: 1; }
+
+    .actions { display: flex; flex-direction: column; gap: 10px; }
+    .btn-draw { border-radius: 8px; background: #8b4513; color: #ffffff; padding: 12px 0; font-size: 16px; font-weight: 500; cursor: pointer;}
+    .btn-copy { border-radius: 8px; background: #f2ede4; color: #5c4033; border: 0.5px solid rgba(139, 90, 43, 0.35); padding: 12px 0; font-size: 16px; font-weight: 500; cursor: pointer;}
+
+    /* ================= 4. 统一的加载遮罩 (书本悬浮呼吸) ================= */
+    .loading-mask { display: none; position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 1000; background: rgba(245, 242, 233, 0.92); flex-direction: column; align-items: center; justify-content: center; padding: 24px 12px; box-sizing: border-box; }
+    .loading-center { position: relative; width: 160px; height: 200px; margin-top: -60px; display: flex; flex-direction: column; align-items: center; justify-content: center;}
+    
+    .loading-glow { position: absolute; left: 50%; top: 50%; width: 140px; height: 160px; transform: translate(-50%, -50%); background: radial-gradient(ellipse at center, rgba(194, 58, 43, 0.25) 0%, rgba(194, 58, 43, 0) 65%); pointer-events: none; animation: glow-pulse 1.5s ease-in-out infinite; }
+    
+    /* 微缩版小书本 */
+    .loading-book { position: relative; width: 90px; height: 125px; background: #c23a2b; border-radius: 3px 10px 10px 3px; border: 1px solid #a32e22; box-shadow: inset 8px 0 12px rgba(0, 0, 0, 0.15), inset 1px 0 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(140, 45, 35, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding-left: 6px; animation: book-float 1.5s ease-in-out infinite; }
+    
+    .loading-text { color: #ffffff; font-size: 16px; font-weight: 600; font-family: "Songti SC", "Noto Serif SC", SimSun, serif; line-height: 1; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); }
+    .loading-hint { margin-top: 20px; font-size: 14px; color: #d68a83; font-family: "Songti SC", SimSun, serif; text-align: center; }
+
+    /* 悬浮与呼吸动画 */
+    @keyframes book-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.95); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toast-container"></div>
+
+  <div id="start-page">
+    <div class="start-main">
+      <div class="book-wrap">
+        <div class="book-glow"></div>
+        <div class="book-cover">
+          <div class="book-labels">
+            <span class="book-char">语录</span>
+            <span class="book-title">随读</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn-extract" id="start-extract-btn">
+        <span class="btn-extract-text">读取语录</span>
+      </button>
+    </div>
+    <div class="footer-quote">「星星之火，可以燎原」</div>
+  </div>
+
+  <div id="draw-page">
+    <div class="header">
+      <span class="header-title">语录随读</span>
+      <span class="header-sub">深学语录原文，细悟思想精髓</span>
+    </div>
+
+    <div class="quote-card">
+      <span class="placeholder-text" id="placeholder-view">点击下方按钮读语录</span>
+      <div id="result-view">
+        <div class="category-wrap">
+          <div class="category-inner">
+            <span class="category" id="quote-tag"></span>
+            <div class="category-underline"></div>
+          </div>
+        </div>
+        <span class="quote-main" id="quote-text"></span>
+        <div class="card-divider"></div>
+        <div class="card-footer">
+          <div class="footer-left">
+            <span class="source" id="quote-source"></span>
+            <span class="star">★</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-draw" id="draw-btn">再读一条</button>
+      <button class="btn-copy" id="copy-btn" disabled>复制语录</button>
+    </div>
+
+    <div class="loading-mask" id="loading-mask">
+      <div class="loading-center">
+        <div class="loading-glow"></div>
+        <div class="loading-book">
+          <span class="loading-text">读</span>
+          <span class="loading-text">取</span>
+          <span class="loading-text">中</span>
+        </div>
+      </div>
+      <span class="loading-hint">正在感悟思想伟力...</span>
+    </div>
+  </div>
+
+  <script>
+    var module = { exports: {} };
+  </script>
+  <script src="./quotes.js"></script>
+
+  <script>
+    // 挂载数据：如果同级目录下没有 quotes.js，则退化为空数组避免程序崩溃
+    const QUOTES = module.exports || [];
+
+    let state = {
+      hasDrawn: false,
+      loading: false,
+      currentQuote: null,
+      timer: null
+    };
+
+    const DOM = {
+      startPage: document.getElementById('start-page'),
+      drawPage: document.getElementById('draw-page'),
+      startBtn: document.getElementById('start-extract-btn'),
+      
+      placeholderView: document.getElementById('placeholder-view'),
+      resultView: document.getElementById('result-view'),
+      tag: document.getElementById('quote-tag'),
+      text: document.getElementById('quote-text'),
+      source: document.getElementById('quote-source'),
+      
+      drawBtn: document.getElementById('draw-btn'),
+      copyBtn: document.getElementById('copy-btn'),
+      loadingMask: document.getElementById('loading-mask'),
+      toast: document.getElementById('toast-container')
+    };
+
+    function showToast(msg, duration = 2000) {
+      DOM.toast.textContent = msg;
+      DOM.toast.style.display = 'block';
+      void DOM.toast.offsetWidth; 
+      DOM.toast.style.opacity = '1';
+      setTimeout(() => {
+        DOM.toast.style.opacity = '0';
+        setTimeout(() => { DOM.toast.style.display = 'none'; }, 300);
+      }, duration);
+    }
+
+    function performDraw() {
+      if (state.loading) return; 
+      
+      // 严谨的判空逻辑，防止本地双击时路径不对导致读取失败
+      if (!QUOTES || QUOTES.length === 0) {
+        showToast('未读取到语录数据，请确保 quotes.js 在同一目录');
+        return;
+      }
+
+      state.loading = true;
+      DOM.loadingMask.style.display = 'flex';
+      DOM.drawBtn.disabled = true;
+      DOM.copyBtn.disabled = true;
+
+      if (navigator.vibrate) navigator.vibrate(50);
+
+      if (state.timer) clearTimeout(state.timer);
+      
+      state.timer = setTimeout(() => {
+        state.timer = null;
+        
+        const idx = Math.floor(Math.random() * QUOTES.length);
+        const q = QUOTES[idx];
+        state.currentQuote = q;
+
+        DOM.tag.textContent = q.tag || q.category || "未分类";
+        DOM.text.textContent = q.text || q.body || "（未读取到正文）";
+        DOM.source.textContent = q.source || "（未知出处）";
+        
+        state.hasDrawn = true;
+        DOM.placeholderView.style.display = 'none';
+        DOM.resultView.style.display = 'flex';
+
+        state.loading = false;
+        DOM.loadingMask.style.display = 'none';
+        DOM.drawBtn.disabled = false;
+        DOM.copyBtn.disabled = false;
+      }, 1000); 
+    }
+
+    function copyQuote() {
+      const q = state.currentQuote;
+      if (!state.hasDrawn || !q) {
+        showToast('请先读语录');
+        return;
+      }
+
+      const lines = [q.text || q.body];
+      if (q.source) lines.push(q.source);
+      const textToCopy = lines.join('\n');
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          showToast('已复制');
+        }).catch(() => fallbackCopy(textToCopy));
+      } else {
+        fallbackCopy(textToCopy);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.top = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('已复制');
+      } catch (err) {
+        showToast('复制失败，请手动选择复制');
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // 事件绑定
+    DOM.startBtn.addEventListener('click', () => {
+      DOM.startPage.style.display = 'none';
+      DOM.drawPage.style.display = 'flex';
+      performDraw(); 
+    });
+
+    DOM.drawBtn.addEventListener('click', performDraw);
+    DOM.copyBtn.addEventListener('click', copyQuote);
+
+  </script>
+</body>
+</html>
